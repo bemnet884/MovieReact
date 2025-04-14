@@ -4,12 +4,14 @@ import Search from './components/Search'
 import Spinner from './components/Spinner'
 import MovieCard from './components/MovieCard'
 import { useDebounce } from 'react-use'
+import { getTrendingMovies, updateSearchCount } from './appwrite'
 
 function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debounceSearchTerm, setDebounceSearchTerm] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [movieList, setMovieList] = useState([])
+  const [trendingMovies, setTrendingMovies] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
 
@@ -48,6 +50,9 @@ function App() {
       }
 
       setMovieList(data.results || []);
+      if (query && data.results.length > 0) {
+        await updateSearchCount(query, data.results[0]);
+      }
     } catch (error) {
       console.error(error);
       setErrorMessage('Error Fetching Movies, Please Try Again later!')
@@ -56,11 +61,24 @@ function App() {
     }
   }
 
-    useDebounce(() => setDebounceSearchTerm(searchTerm), 500, [searchTerm]);
+  const loadTrendingMovies = async () => {
+    try {
+      const movies = await getTrendingMovies()
+      setTrendingMovies(movies);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  useDebounce(() => setDebounceSearchTerm(searchTerm), 500, [searchTerm]);
 
   useEffect(() => {
     fetchMovies(debounceSearchTerm);
-   }, [debounceSearchTerm]);
+  }, [debounceSearchTerm]);
+  
+  useEffect(() => {
+    loadTrendingMovies();
+   }, []);
 
   return (
     <main>
@@ -73,6 +91,20 @@ function App() {
 
           <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
         </header>
+
+        {trendingMovies.length > 0 && (
+          <section className='trending'>
+            <h2>Trending Movies</h2>
+            <ul>
+              {trendingMovies.map((movie, index) => (
+                <li key={movie.$id}>
+                  <p>{index + 1} </p>
+                  <img src={movie.poster_url} alt={movie.title } />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className='all-movies'>
           <h1 className='text-3xl text-gradient'>All Movies</h1>
